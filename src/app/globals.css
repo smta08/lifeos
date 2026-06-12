@@ -1,0 +1,5 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* TODO: add shadcn CSS variable overrides here after running `npx shadcn-ui@latest init` */

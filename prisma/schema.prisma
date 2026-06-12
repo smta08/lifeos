@@ -1,0 +1,204 @@
+// Prisma is used ONLY for migrations and webhook/service-role paths.
+// User query paths go through the Supabase client (RLS enforced by construction).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum FactType {
+  subscription
+  document
+  insurance
+  warranty
+  lease
+  license
+  passport
+  receipt
+  bill
+  task
+  goal
+  custom
+}
+
+enum FactStatus {
+  active
+  archived
+  resolved
+}
+
+enum FactSource {
+  manual
+  email
+  ocr
+  api
+}
+
+enum Recurrence {
+  none
+  weekly
+  monthly
+  yearly
+}
+
+enum AlertUrgency {
+  low
+  medium
+  high
+  critical
+}
+
+enum AlertStatus {
+  active
+  snoozed
+  dismissed
+  resolved
+}
+
+enum AlertSource {
+  rule_engine
+  ai_scan
+}
+
+enum SubscriptionTier {
+  free
+  pro
+  executive
+}
+
+enum AiRunStatus {
+  pending
+  completed
+  failed
+  rejected
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model Profile {
+  id            String           @id @db.Uuid               // mirrors auth.users.id
+  email         String           @unique
+  displayName   String?          @map("display_name")
+  timezone      String           @default("UTC")
+  notifyEmail   Boolean          @default(true)  @map("notify_email")
+  notifyCadence String           @default("daily") @map("notify_cadence")
+  tier          SubscriptionTier @default(free)
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt      @map("updated_at")
+
+  facts         Fact[]
+  alerts        Alert[]
+  activityLogs  ActivityLog[]
+  aiRuns        AiRun[]
+
+  @@map("profiles")
+}
+
+model Fact {
+  id           String     @id @default(uuid()) @db.Uuid
+  userId       String     @map("user_id")      @db.Uuid
+  type         FactType
+  title        String
+  category     String?
+  amount       Decimal?   @db.Decimal(12, 2)
+  currency     String?    @db.Char(3)
+  dueDate      DateTime?  @map("due_date")
+  // due_date always means the NEXT occurrence; engine advances it when it passes
+  recurrence   Recurrence @default(none)
+  status       FactStatus @default(active)
+  source       FactSource @default(manual)
+  // Provenance for scanner-created facts (null for manual Phase 1 facts)
+  connectionId String?    @map("connection_id") @db.Uuid
+  externalRef  String?    @map("external_ref")
+  // Envelope-encrypted sensitive values (document/account/policy numbers) — decrypt only in factRepo
+  sensitive    Bytes?
+  metadata     Json       @default("{}")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt      @map("updated_at")
+
+  user          Profile         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alertEvidence AlertEvidence[]
+
+  // Partial unique index (WHERE external_ref IS NOT NULL) is enforced in SQL migration;
+  // Prisma doesn't support partial indexes, so we skip the @@unique here.
+  @@index([userId, dueDate],  name: "facts_user_due_date_idx")
+  @@index([userId, type],     name: "facts_user_type_idx")
+  @@index([userId, status],   name: "facts_user_status_idx")
+  @@map("facts")
+}
+
+model Alert {
+  id              String       @id @default(uuid()) @db.Uuid
+  userId          String       @map("user_id")       @db.Uuid
+  title           String
+  category        String
+  urgency         AlertUrgency
+  suggestedAction String?      @map("suggested_action")
+  status          AlertStatus  @default(active)
+  source          AlertSource
+  // Partial unique index (WHERE dedupe_key IS NOT NULL) enforced in SQL migration only
+  dedupeKey       String?      @map("dedupe_key")
+  snoozedUntil    DateTime?    @map("snoozed_until")
+  resolvedAt      DateTime?    @map("resolved_at")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt      @map("updated_at")
+
+  user     Profile         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  evidence AlertEvidence[]
+
+  @@index([userId, status, urgency], name: "alerts_user_status_urgency_idx")
+  @@map("alerts")
+}
+
+// Evidence lives in this join table — evidence_fact_ids is model-output shape only, never stored on alerts
+model AlertEvidence {
+  alertId String @map("alert_id") @db.Uuid
+  factId  String @map("fact_id")  @db.Uuid
+
+  alert Alert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  fact  Fact  @relation(fields: [factId],  references: [id], onDelete: Cascade)
+
+  @@id([alertId, factId])
+  @@map("alert_evidence")
+}
+
+model ActivityLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id")    @db.Uuid
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  action     String
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at")
+  // No updatedAt — activity_logs is append-only (no UPDATE/DELETE RLS policies)
+
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], name: "activity_logs_user_idx")
+  @@map("activity_logs")
+}
+
+model AiRun {
+  id           String      @id @default(uuid()) @db.Uuid
+  userId       String      @map("user_id")      @db.Uuid
+  job          String
+  model        String
+  inputTokens  Int         @default(0)  @map("input_tokens")
+  outputTokens Int         @default(0)  @map("output_tokens")
+  costUsd      Decimal     @default(0)  @map("cost_usd") @db.Decimal(10, 6)
+  status       AiRunStatus @default(pending)
+  createdAt    DateTime    @default(now()) @map("created_at")
+  // No updatedAt — treat ai_runs as immutable audit rows; update via status field only
+
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], name: "ai_runs_user_idx")
+  @@map("ai_runs")
+}
