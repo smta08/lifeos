@@ -59,7 +59,7 @@ export function QuickAddChips({ existingTitles }: QuickAddChipsProps) {
               'group flex items-center gap-2 rounded-control border px-3 py-2 text-sm font-medium transition-all duration-150',
               isAdded
                 ? 'cursor-default border-[#059669]/30 bg-[#059669]/10 text-[#059669] dark:border-[#34D399]/30 dark:bg-[#34D399]/10 dark:text-[#34D399]'
-                : 'border-[#E4E4E7] dark:border-[#27272A] bg-white dark:bg-[#18181B] text-[#1D1D1F] dark:text-[#FAFAFA] hover:-translate-y-px hover:border-[#0369A1]/40 dark:hover:border-[#38BDF8]/40 hover:shadow-card disabled:opacity-60',
+                : 'border-[#E4E4E7] dark:border-[#27272A] bg-white dark:bg-[#18181B] text-[#1D1D1F] dark:text-[#FAFAFA] hover:-translate-y-px hover:border-[#0369A1]/40 dark:hover:border-[#38BDF8]/40 hover:shadow-card active:scale-[0.97] disabled:opacity-60',
             ].join(' ')}
           >
             <span

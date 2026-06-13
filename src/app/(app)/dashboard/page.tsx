@@ -7,6 +7,7 @@ import { factRepo } from '@/repositories/factRepo'
 import { AlertList } from '@/features/alerts/components/AlertList'
 import { SpendingStrip } from '@/features/facts/components/SpendingStrip'
 import { QuickAddChips } from '@/features/facts/components/QuickAddChips'
+import { Reveal } from '@/components/motion/Reveal'
 import { totalMonthlySpend, renewingSoon } from '@/domain/spending'
 import type { Alert, AlertJSON } from '@/domain/alert'
 
@@ -65,7 +66,7 @@ export default async function DashboardPage() {
   return (
     <div className="max-w-4xl mx-auto">
       {/* Greeting + status */}
-      <div className="mb-8">
+      <Reveal className="mb-8">
         <h1 className="text-2xl font-semibold font-heading text-[#1D1D1F] dark:text-[#FAFAFA]">
           {greeting(timezone)}, {name}.
         </h1>
@@ -74,16 +75,18 @@ export default async function DashboardPage() {
             ? 'Everything looks good.'
             : `${activeCount} item${activeCount !== 1 ? 's' : ''} need${activeCount === 1 ? 's' : ''} your attention.`}
         </p>
-      </div>
+      </Reveal>
 
       {/* Spending overview */}
       <div className="mb-8 space-y-5">
-        <SpendingStrip
-          totalMonthly={totalMonthly}
-          trackedCount={facts.length}
-          soonCount={soonCount}
-        />
-        <div>
+        <Reveal delay={0.06}>
+          <SpendingStrip
+            totalMonthly={totalMonthly}
+            trackedCount={facts.length}
+            soonCount={soonCount}
+          />
+        </Reveal>
+        <Reveal delay={0.12}>
           <h2 className="mb-3 text-sm font-medium text-[#1D1D1F] dark:text-[#FAFAFA]">
             Quick add
             <span className="ml-2 font-normal text-[#52525B] dark:text-[#A1A1AA]">
@@ -91,11 +94,13 @@ export default async function DashboardPage() {
             </span>
           </h2>
           <QuickAddChips existingTitles={existingTitles} />
-        </div>
+        </Reveal>
       </div>
 
       {/* Alert list (handles its own empty state) */}
-      <AlertList initialAlerts={alertsJSON} />
+      <Reveal delay={0.18}>
+        <AlertList initialAlerts={alertsJSON} />
+      </Reveal>
 
       {/* FAB */}
       <Link

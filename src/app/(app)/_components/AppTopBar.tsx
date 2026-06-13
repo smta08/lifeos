@@ -22,7 +22,7 @@ export function AppTopBar({ displayName, initials }: AppTopBarProps) {
         {/* User avatar */}
         <div
           aria-label={`Signed in as ${displayName}`}
-          className="flex items-center justify-center w-8 h-8 rounded-full bg-[#0369A1] dark:bg-[#38BDF8] text-white dark:text-[#0B0C0E] text-xs font-semibold select-none cursor-default"
+          className="flex items-center justify-center w-8 h-8 rounded-full bg-[#0369A1] dark:bg-[#38BDF8] text-white dark:text-[#0B0C0E] text-xs font-semibold select-none cursor-default ring-2 ring-transparent ring-offset-2 ring-offset-white dark:ring-offset-[#18181B] transition-shadow hover:ring-[#0369A1]/20 dark:hover:ring-[#38BDF8]/20"
         >
           {initials}
         </div>

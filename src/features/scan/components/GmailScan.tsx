@@ -142,7 +142,7 @@ export function GmailScan() {
           type="button"
           onClick={connect}
           disabled={phase === 'connecting'}
-          className="mt-5 flex items-center gap-2 rounded-control bg-[#0369A1] dark:bg-[#38BDF8] px-5 py-2.5 text-sm font-semibold text-white dark:text-[#0B0C0E] transition-opacity hover:opacity-90 disabled:opacity-60"
+          className="mt-5 flex items-center gap-2 rounded-control bg-[#0369A1] dark:bg-[#38BDF8] px-5 py-2.5 text-sm font-semibold text-white dark:text-[#0B0C0E] transition-[opacity,transform] hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
         >
           {phase === 'connecting' ? <Loader2 size={16} className="animate-spin" /> : <ScanLine size={16} />}
           {phase === 'connecting' ? 'Redirecting…' : 'Connect & scan'}
@@ -286,7 +286,7 @@ export function GmailScan() {
                         type="button"
                         onClick={() => approve(item)}
                         disabled={isPending}
-                        className="flex h-9 items-center gap-1.5 rounded-control bg-[#0369A1] dark:bg-[#38BDF8] px-3.5 text-sm font-semibold text-white dark:text-[#0B0C0E] transition-opacity hover:opacity-90 disabled:opacity-50"
+                        className="flex h-9 items-center gap-1.5 rounded-control bg-[#0369A1] dark:bg-[#38BDF8] px-3.5 text-sm font-semibold text-white dark:text-[#0B0C0E] transition-[opacity,transform] hover:opacity-90 active:scale-[0.97] disabled:opacity-50"
                       >
                         {isPending ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} strokeWidth={2.5} />}
                         Approve

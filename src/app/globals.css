@@ -2,4 +2,74 @@
 @tailwind components;
 @tailwind utilities;
 
-/* TODO: add shadcn CSS variable overrides here after running `npx shadcn-ui@latest init` */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* No grey flash on tap (mobile / low-end browsers) */
+    -webkit-tap-highlight-color: transparent;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+
+  /* Keyboard-only focus ring — premium, consistent, never on mouse click */
+  :focus-visible {
+    outline: 2px solid #0369a1;
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  .dark :focus-visible {
+    outline-color: #38bdf8;
+  }
+
+  /* Tinted selection in the brand accent */
+  ::selection {
+    background: rgba(3, 105, 161, 0.16);
+  }
+  .dark ::selection {
+    background: rgba(56, 189, 248, 0.22);
+  }
+}
+
+@layer utilities {
+  /* Subtle scrollbar for scroll containers */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #d4d4d8 transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #d4d4d8;
+    border-radius: 9999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .dark .scrollbar-thin {
+    scrollbar-color: #3f3f46 transparent;
+  }
+  .dark .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #3f3f46;
+  }
+}
+
+/* Honour the OS "reduce motion" setting everywhere — keeps low-end and
+   motion-sensitive devices calm. Framer Motion is handled via MotionConfig;
+   this covers all CSS transitions/animations. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

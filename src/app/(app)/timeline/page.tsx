@@ -2,6 +2,7 @@ import { CalendarClock } from 'lucide-react'
 import { requireUser } from '@/services/auth/requireUser'
 import { factRepo } from '@/repositories/factRepo'
 import { monthlyAmount } from '@/domain/spending'
+import { Reveal } from '@/components/motion/Reveal'
 import type { Fact, FactType } from '@/domain/fact'
 
 const MONTHS_LONG = [
@@ -73,7 +74,7 @@ export default async function TimelinePage() {
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {months.map(({ year, month }) => {
+          {months.map(({ year, month }, i) => {
             const items = dated
               .filter((f) => f.dueDate!.getFullYear() === year && f.dueDate!.getMonth() === month)
               .sort((a, b) => a.dueDate!.getTime() - b.dueDate!.getTime())
@@ -81,12 +82,12 @@ export default async function TimelinePage() {
             const monthTotal = items.reduce((s, f) => s + monthlyAmount(f), 0)
 
             return (
+              <Reveal key={`${year}-${month}`} delay={Math.min(i * 0.04, 0.4)}>
               <div
-                key={`${year}-${month}`}
                 className={[
-                  'rounded-card border p-4 transition-colors',
+                  'rounded-card border p-4 transition-all duration-150',
                   has
-                    ? 'border-[#0369A1]/30 dark:border-[#38BDF8]/30 bg-white dark:bg-[#18181B] shadow-card'
+                    ? 'border-[#0369A1]/30 dark:border-[#38BDF8]/30 bg-white dark:bg-[#18181B] shadow-card hover:-translate-y-0.5'
                     : 'border-[#E4E4E7] dark:border-[#27272A] bg-transparent',
                 ].join(' ')}
               >
@@ -131,6 +132,7 @@ export default async function TimelinePage() {
                   <p className="text-xs text-[#A1A1AA] dark:text-[#52525B]">Nothing scheduled</p>
                 )}
               </div>
+              </Reveal>
             )
           })}
         </div>

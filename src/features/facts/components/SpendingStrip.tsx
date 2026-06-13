@@ -1,5 +1,6 @@
 'use client'
 
+import { motion, useReducedMotion } from 'framer-motion'
 import { Wallet, Bell } from 'lucide-react'
 import { useCountUp } from '@/lib/hooks/useCountUp'
 
@@ -16,6 +17,7 @@ export function SpendingStrip({
   soonCount,
   budget = 300,
 }: SpendingStripProps) {
+  const reduce = useReducedMotion()
   const animTotal = useCountUp(totalMonthly)
   const animCount = useCountUp(trackedCount, 600)
   const animSoon = useCountUp(soonCount, 600)
@@ -52,12 +54,14 @@ export function SpendingStrip({
           </span>
         </div>
         <div className="h-2.5 overflow-hidden rounded-full bg-[#F5F5F7] dark:bg-[#27272A]">
-          <div
+          <motion.div
             className={[
-              'h-full rounded-full transition-[width] duration-700 ease-out',
+              'h-full rounded-full',
               over ? 'bg-red-600 dark:bg-red-500' : 'bg-[#0369A1] dark:bg-[#38BDF8]',
             ].join(' ')}
-            style={{ width: `${pct}%` }}
+            initial={{ width: reduce ? `${pct}%` : 0 }}
+            animate={{ width: `${pct}%` }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
           />
         </div>
       </div>

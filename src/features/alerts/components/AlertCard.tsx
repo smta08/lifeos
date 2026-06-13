@@ -112,7 +112,7 @@ export function AlertCard({ alert, onDismiss, onSnooze, onResolve, isPending }: 
         <button
           onClick={handleResolve}
           disabled={isPending || resolving}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-[#0369A1] dark:bg-[#38BDF8] text-white dark:text-[#0B0C0E] text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-[#0369A1] dark:bg-[#38BDF8] text-white dark:text-[#0B0C0E] text-xs font-semibold transition-[opacity,transform] hover:opacity-90 active:scale-[0.97] disabled:opacity-50 cursor-pointer"
         >
           {resolving
             ? <Loader2 size={12} className="animate-spin" />

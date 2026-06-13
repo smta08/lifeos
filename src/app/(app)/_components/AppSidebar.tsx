@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { motion } from 'framer-motion'
 import {
   LayoutDashboard,
   CalendarClock,
@@ -42,16 +43,34 @@ export function AppSidebar() {
             <Link
               key={href}
               href={href}
-              className={[
-                'flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-sm font-medium transition-colors duration-150 cursor-pointer',
-                isActive
-                  ? 'bg-[#0369A1]/10 dark:bg-[#38BDF8]/10 text-[#0369A1] dark:text-[#38BDF8]'
-                  : 'text-[#52525B] dark:text-[#A1A1AA] hover:bg-[#F5F5F7] dark:hover:bg-[#27272A] hover:text-[#1D1D1F] dark:hover:text-[#FAFAFA]',
-              ].join(' ')}
               aria-current={isActive ? 'page' : undefined}
+              className={[
+                'group relative flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-sm font-medium',
+                'transition-colors duration-150 cursor-pointer',
+                isActive
+                  ? 'text-[#0369A1] dark:text-[#38BDF8]'
+                  : 'text-[#52525B] dark:text-[#A1A1AA] hover:text-[#1D1D1F] dark:hover:text-[#FAFAFA]',
+              ].join(' ')}
             >
-              <Icon size={18} strokeWidth={isActive ? 2 : 1.5} />
-              {label}
+              {/* Active pill — slides between items via shared layout */}
+              {isActive && (
+                <motion.span
+                  layoutId="sidebar-active"
+                  className="absolute inset-0 rounded-[10px] bg-[#0369A1]/10 dark:bg-[#38BDF8]/10"
+                  transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                />
+              )}
+              {/* Hover wash for inactive items (under content, above pill layer) */}
+              {!isActive && (
+                <span className="absolute inset-0 rounded-[10px] bg-[#F5F5F7] dark:bg-[#27272A] opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
+              )}
+
+              <Icon
+                size={18}
+                strokeWidth={isActive ? 2 : 1.5}
+                className="relative z-10 transition-transform duration-150 group-hover:scale-110"
+              />
+              <span className="relative z-10">{label}</span>
             </Link>
           )
         })}

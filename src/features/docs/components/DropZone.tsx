@@ -272,7 +272,7 @@ export function DropZone() {
                 type="button"
                 onClick={handleAdd}
                 disabled={adding}
-                className="flex flex-1 items-center justify-center gap-2 rounded-control bg-[#0369A1] dark:bg-[#38BDF8] py-2.5 text-sm font-semibold text-white dark:text-[#0B0C0E] transition-opacity hover:opacity-90 disabled:opacity-50"
+                className="flex flex-1 items-center justify-center gap-2 rounded-control bg-[#0369A1] dark:bg-[#38BDF8] py-2.5 text-sm font-semibold text-white dark:text-[#0B0C0E] transition-[opacity,transform] hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
               >
                 {adding ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
                 Add to LifeOS
