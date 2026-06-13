@@ -23,3 +23,6 @@ next-env.d.ts
 
 # Vercel
 .vercel
+
+# Generated on postinstall (scripts/copy-pdf-worker.mjs)
+/public/pdf.worker.min.mjs

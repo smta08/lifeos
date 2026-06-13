@@ -3,50 +3,33 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { UploadCloud, Loader2, ShieldCheck, Plus, FileCheck } from 'lucide-react'
+import { UploadCloud, Loader2, ShieldCheck, Plus, FileCheck, AlertCircle } from 'lucide-react'
 import { createFact } from '@/features/facts/actions'
-import { makeFactInput, DOC_TYPES, FALLBACK_DOC_ICON } from '@/features/facts/presets'
+import { makeFactInput } from '@/features/facts/presets'
+import { FACT_TYPE_CONFIG } from '@/features/facts/constants'
+import { extractText, parseFields, nameFromFileName, type ExtractProgress } from '../extract'
 import { useToast } from '@/components/Toast'
 import type { FactType } from '@/domain/fact'
 
-interface Extracted {
+type Status = 'idle' | 'extracting' | 'review' | 'error'
+
+const TYPE_OPTIONS: FactType[] = [
+  'document', 'subscription', 'insurance', 'warranty',
+  'lease', 'license', 'passport', 'receipt', 'bill',
+]
+
+interface ReviewForm {
   name: string
-  amount: number
-  date: Date
-  typeLabel: string
+  amount: string      // raw input; validated on submit
+  date: string        // yyyy-mm-dd for <input type=date>
   factType: FactType
-  color: string
-  icon: typeof FALLBACK_DOC_ICON
+  matched: { amount: boolean; date: boolean; type: boolean }
 }
 
-function randomBetween(min: number, max: number) {
-  return Math.random() * (max - min) + min
-}
-
-// Mock extraction. Runs entirely in the browser — the dropped file is read for
-// its name only and is never uploaded, stored, or sent anywhere. (Phase 2 will
-// swap this for on-device OCR; the no-persist contract stays the same.)
-function extractFromFile(fileName: string): Extracted {
-  const base = fileName.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim()
-  const name = base
-    ? base.replace(/\b\w/g, (c) => c.toUpperCase()).slice(0, 40)
-    : 'Untitled Document'
-  const doc = DOC_TYPES[Math.floor(Math.random() * DOC_TYPES.length)]
-  const date = new Date(Date.now() + Math.floor(randomBetween(30, 330)) * 86_400_000)
-
-  return {
-    name,
-    amount: +randomBetween(10, 210).toFixed(2),
-    date,
-    typeLabel: doc.label,
-    factType: doc.type,
-    color: doc.color,
-    icon: doc.icon,
-  }
-}
-
-function fmtDate(d: Date) {
-  return d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })
+function isoToDateInput(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10)
 }
 
 export function DropZone() {
@@ -54,45 +37,77 @@ export function DropZone() {
   const toast = useToast()
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [card, setCard] = useState<Extracted | null>(null)
+  const [status, setStatus] = useState<Status>('idle')
+  const [progress, setProgress] = useState<ExtractProgress | null>(null)
+  const [form, setForm] = useState<ReviewForm | null>(null)
   const [adding, setAdding] = useState(false)
 
-  function handleFile(file: File | undefined) {
+  async function handleFile(file: File | undefined) {
     if (!file) return
-    setCard(null)
-    setBusy(true)
-    const name = file.name
-    setTimeout(() => {
-      setCard(extractFromFile(name))
-      setBusy(false)
-    }, 1800)
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+    const isImage = file.type.startsWith('image/')
+    if (!isPdf && !isImage) {
+      toast('Unsupported file — drop a PDF or image')
+      return
+    }
+
+    setForm(null)
+    setProgress(null)
+    setStatus('extracting')
+
+    try {
+      const text = await extractText(file, setProgress)
+      const parsed = parseFields(text, file.name)
+      setForm({
+        name: parsed.name || nameFromFileName(file.name),
+        amount: parsed.amount !== null ? parsed.amount.toFixed(2) : '',
+        date: isoToDateInput(parsed.dateISO),
+        factType: parsed.factType,
+        matched: parsed.matched,
+      })
+      setStatus('review')
+    } catch {
+      // No content logged — extraction errors can carry document text.
+      setStatus('error')
+    }
   }
 
   async function handleAdd() {
-    if (!card) return
+    if (!form) return
+
+    const amountNum = form.amount.trim() ? Number(form.amount) : undefined
+    if (amountNum !== undefined && (Number.isNaN(amountNum) || amountNum < 0)) {
+      toast('Enter a valid amount')
+      return
+    }
+
     setAdding(true)
     const result = await createFact(
       makeFactInput({
-        type: card.factType,
-        title: card.name,
-        amount: card.amount,
-        dueDateISO: card.date.toISOString(),
+        type: form.factType,
+        title: form.name.trim() || 'Untitled Document',
+        amount: amountNum,
+        dueDateISO: form.date ? new Date(form.date).toISOString() : undefined,
         recurrence: 'none',
       }),
     )
     setAdding(false)
 
     if (result.ok) {
-      toast(`${card.name} added`)
-      setCard(null)
+      toast(`${form.name.trim() || 'Document'} added`)
+      setForm(null)
+      setStatus('idle')
       router.refresh()
     } else {
       toast(result.error.message)
     }
   }
 
-  const CardIcon = card?.icon ?? FALLBACK_DOC_ICON
+  function reset() {
+    setForm(null)
+    setStatus('idle')
+    setProgress(null)
+  }
 
   return (
     <div>
@@ -133,20 +148,48 @@ export function DropZone() {
         </p>
       </div>
 
-      {/* Spinner */}
-      {busy && (
-        <div className="mt-5 flex items-center gap-3 rounded-card border border-[#E4E4E7] dark:border-[#27272A] bg-white dark:bg-[#18181B] p-6 shadow-card">
-          <Loader2 size={22} className="animate-spin text-[#0369A1] dark:text-[#38BDF8]" />
-          <div>
-            <p className="text-sm font-medium text-[#1D1D1F] dark:text-[#FAFAFA]">Extracting fields…</p>
-            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Reading the document on your device</p>
+      {/* Extracting */}
+      {status === 'extracting' && (
+        <div className="mt-5 rounded-card border border-[#E4E4E7] dark:border-[#27272A] bg-white dark:bg-[#18181B] p-6 shadow-card">
+          <div className="flex items-center gap-3">
+            <Loader2 size={22} className="animate-spin text-[#0369A1] dark:text-[#38BDF8]" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-[#1D1D1F] dark:text-[#FAFAFA]">
+                {progress?.stage === 'ocr' ? 'Reading text from image…' : 'Reading document…'}
+              </p>
+              <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">
+                Processing on your device — the file never leaves this tab.
+              </p>
+            </div>
           </div>
+          {progress?.stage === 'ocr' && progress.progress !== undefined && (
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#F5F5F7] dark:bg-[#27272A]">
+              <div
+                className="h-full rounded-full bg-[#0369A1] dark:bg-[#38BDF8] transition-[width] duration-200"
+                style={{ width: `${Math.round(progress.progress * 100)}%` }}
+              />
+            </div>
+          )}
         </div>
       )}
 
-      {/* Extracted card */}
+      {/* Error */}
+      {status === 'error' && (
+        <div className="mt-5 flex items-center gap-3 rounded-card border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 p-5">
+          <AlertCircle size={20} className="text-red-600 dark:text-red-400" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-[#1D1D1F] dark:text-[#FAFAFA]">Couldn&apos;t read that file</p>
+            <p className="text-xs text-[#52525B] dark:text-[#A1A1AA]">Try a clearer scan, or a different PDF/image.</p>
+          </div>
+          <button onClick={reset} className="text-sm font-medium text-[#0369A1] dark:text-[#38BDF8]">
+            Try again
+          </button>
+        </div>
+      )}
+
+      {/* Review (editable) */}
       <AnimatePresence>
-        {card && !busy && (
+        {status === 'review' && form && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -154,55 +197,100 @@ export function DropZone() {
             transition={{ duration: 0.25, ease: 'easeOut' }}
             className="mt-5 rounded-card border border-[#E4E4E7] dark:border-[#27272A] bg-white dark:bg-[#18181B] p-5 shadow-card"
           >
-            <div className="mb-4 flex items-center gap-3">
-              <span
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-                style={{ background: `${card.color}1F` }}
-              >
-                <CardIcon size={20} strokeWidth={1.75} color={card.color} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs uppercase tracking-wider text-[#0369A1] dark:text-[#38BDF8]">
-                  {card.typeLabel}
-                </p>
-                <p className="truncate text-[15px] font-semibold text-[#1D1D1F] dark:text-[#FAFAFA]">
-                  {card.name}
-                </p>
-              </div>
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-sm font-semibold text-[#1D1D1F] dark:text-[#FAFAFA]">
+                Review &amp; confirm
+              </p>
               <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#059669]/15 dark:bg-[#34D399]/15 px-2.5 py-1 text-xs font-medium text-[#059669] dark:text-[#34D399]">
                 <ShieldCheck size={12} /> Not stored
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Amount" value={`$${card.amount.toFixed(2)}`} />
-              <Field label="Date" value={fmtDate(card.date)} />
-              <Field label="Type" value={card.typeLabel} />
-              <Field label="Name" value={card.name} />
+            <p className="mb-4 text-xs text-[#52525B] dark:text-[#A1A1AA]">
+              Extracted from your document — check the fields and fix anything that&apos;s off.
+            </p>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FieldInput label="Name" hint={!form.name ? 'not found' : undefined}>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="w-full bg-transparent text-sm font-medium text-[#1D1D1F] dark:text-[#FAFAFA] outline-none"
+                  placeholder="Document name"
+                />
+              </FieldInput>
+
+              <FieldInput label="Type">
+                <select
+                  value={form.factType}
+                  onChange={(e) => setForm({ ...form, factType: e.target.value as FactType })}
+                  className="w-full bg-transparent text-sm font-medium text-[#1D1D1F] dark:text-[#FAFAFA] outline-none"
+                >
+                  {TYPE_OPTIONS.map((t) => (
+                    <option key={t} value={t} className="bg-white dark:bg-[#18181B]">
+                      {FACT_TYPE_CONFIG[t].label}
+                    </option>
+                  ))}
+                </select>
+              </FieldInput>
+
+              <FieldInput label="Amount" hint={!form.matched.amount ? 'not detected' : undefined}>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm text-[#52525B] dark:text-[#A1A1AA]">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.amount}
+                    onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                    className="w-full bg-transparent text-sm font-medium tabular-nums text-[#1D1D1F] dark:text-[#FAFAFA] outline-none"
+                    placeholder="0.00"
+                  />
+                </div>
+              </FieldInput>
+
+              <FieldInput label="Date" hint={!form.matched.date ? 'not detected' : undefined}>
+                <input
+                  type="date"
+                  value={form.date}
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                  className="w-full bg-transparent text-sm font-medium tabular-nums text-[#1D1D1F] dark:text-[#FAFAFA] outline-none [color-scheme:light] dark:[color-scheme:dark]"
+                />
+              </FieldInput>
             </div>
 
-            <button
-              type="button"
-              onClick={handleAdd}
-              disabled={adding}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-control bg-[#0369A1] dark:bg-[#38BDF8] py-2.5 text-sm font-semibold text-white dark:text-[#0B0C0E] transition-opacity hover:opacity-90 disabled:opacity-50"
-            >
-              {adding ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-              Add to LifeOS
-            </button>
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={reset}
+                className="rounded-control border border-[#E4E4E7] dark:border-[#27272A] px-4 py-2.5 text-sm font-medium text-[#52525B] dark:text-[#A1A1AA] transition-colors hover:bg-[#F5F5F7] dark:hover:bg-[#27272A]"
+              >
+                Discard
+              </button>
+              <button
+                type="button"
+                onClick={handleAdd}
+                disabled={adding}
+                className="flex flex-1 items-center justify-center gap-2 rounded-control bg-[#0369A1] dark:bg-[#38BDF8] py-2.5 text-sm font-semibold text-white dark:text-[#0B0C0E] transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                {adding ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                Add to LifeOS
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Empty state */}
-      {!busy && !card && (
+      {status === 'idle' && (
         <div className="mt-5 flex flex-col items-center rounded-card border border-dashed border-[#E4E4E7] dark:border-[#27272A] py-10 text-center">
           <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E4E4E7] dark:bg-[#27272A]">
             <FileCheck size={22} strokeWidth={1.5} className="text-[#52525B] dark:text-[#A1A1AA]" />
           </div>
           <p className="text-sm font-medium text-[#1D1D1F] dark:text-[#FAFAFA]">No document yet</p>
           <p className="mt-1 max-w-xs text-xs text-[#52525B] dark:text-[#A1A1AA]">
-            Drop a file above to see its fields extracted privately on your device.
+            Drop a file above to read its real dates and amounts — privately, on your device.
           </p>
         </div>
       )}
@@ -210,13 +298,22 @@ export function DropZone() {
   )
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function FieldInput({
+  label,
+  hint,
+  children,
+}: {
+  label: string
+  hint?: string
+  children: React.ReactNode
+}) {
   return (
-    <div className="rounded-control bg-[#F5F5F7] dark:bg-[#27272A]/50 px-3 py-2.5">
-      <p className="text-[10px] uppercase tracking-wider text-[#52525B] dark:text-[#A1A1AA]">{label}</p>
-      <p className="mt-0.5 truncate text-sm font-medium tabular-nums text-[#1D1D1F] dark:text-[#FAFAFA]">
-        {value}
-      </p>
+    <div className="rounded-control border border-[#E4E4E7] dark:border-[#27272A] bg-[#F5F5F7] dark:bg-[#27272A]/40 px-3 py-2">
+      <div className="mb-0.5 flex items-center justify-between">
+        <span className="text-[10px] uppercase tracking-wider text-[#52525B] dark:text-[#A1A1AA]">{label}</span>
+        {hint && <span className="text-[10px] text-amber-600 dark:text-amber-400">{hint}</span>}
+      </div>
+      {children}
     </div>
   )
 }
