@@ -60,7 +60,9 @@ export function computeAlerts(
     if (EXPIRY_TYPES.includes(fact.type)) {
       if (days <= 7) {
         alerts.push({
-          dedupeKey:      `expiry:${fact.id}:7`,
+          // Stable key per fact (NOT per window) — one alert updates its
+          // urgency/title as the window narrows, preserving snooze + identity.
+          dedupeKey:      `expiry:${fact.id}`,
           title:          days <= 0
             ? `${fact.title} has expired`
             : `${fact.title} expires in ${days} day${days !== 1 ? 's' : ''}`,
@@ -71,7 +73,7 @@ export function computeAlerts(
         })
       } else if (days <= 30) {
         alerts.push({
-          dedupeKey:      `expiry:${fact.id}:30`,
+          dedupeKey:      `expiry:${fact.id}`,
           title:          `${fact.title} expires in ${days} days`,
           category:       'expiry',
           urgency:        'high',
@@ -80,7 +82,7 @@ export function computeAlerts(
         })
       } else if (days <= 90) {
         alerts.push({
-          dedupeKey:      `expiry:${fact.id}:90`,
+          dedupeKey:      `expiry:${fact.id}`,
           title:          `${fact.title} expires in ${days} days`,
           category:       'expiry',
           urgency:        'medium',

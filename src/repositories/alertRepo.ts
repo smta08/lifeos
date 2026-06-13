@@ -1,13 +1,12 @@
 // All reads/writes use the Supabase client under the user's JWT so RLS is enforced by construction.
-// Upsert uses check-then-insert/update: partial unique index on dedupe_key can't be expressed
-// via PostgREST's onConflict parameter.
+// The rule-engine upsert (check-then-insert/update) lives in the recompute Inngest function,
+// which runs under the service role; user-path code only reads and changes alert status.
 
 import { createClient } from '@/lib/supabase/server'
 import { toResultError } from '@/lib/errors'
 import type { Alert, AlertStatus, AlertCategory, AlertSource } from '@/domain/alert'
 import type { Urgency } from '@/domain/urgency'
 import type { Result, PaginatedResult } from '@/lib/types'
-import type { AlertSpec } from '@/features/alerts/engine'
 import type { ListAlertsInput } from '@/features/alerts/schema'
 
 const URGENCY_ORDER: Record<Urgency, number> = {
@@ -60,74 +59,6 @@ function rowToAlert(row: AlertRow): Alert {
 // ─── Repository ───────────────────────────────────────────────────────────────
 
 export const alertRepo = {
-  // Upsert a rule-engine alert. Re-activates if previously resolved/dismissed.
-  async upsertAlert(userId: string, spec: AlertSpec): Promise<Result<Alert>> {
-    const supabase = await createClient()
-
-    const { data: existing } = await supabase
-      .from('alerts')
-      .select('id, status')
-      .eq('user_id', userId)
-      .eq('dedupe_key', spec.dedupeKey)
-      .maybeSingle()
-
-    if (existing) {
-      const newStatus =
-        existing.status === 'resolved' || existing.status === 'dismissed'
-          ? 'active'
-          : existing.status
-
-      const { data, error } = await supabase
-        .from('alerts')
-        .update({
-          title:            spec.title,
-          urgency:          spec.urgency,
-          suggested_action: spec.suggestedAction,
-          status:           newStatus,
-          updated_at:       new Date().toISOString(),
-        })
-        .eq('id', existing.id)
-        .eq('user_id', userId)
-        .select('*, alert_evidence(fact_id, facts(id, title))')
-        .single()
-
-      if (error || !data) return toResultError('INTERNAL_ERROR', 'Failed to update alert')
-      return { ok: true, data: rowToAlert(data as unknown as AlertRow) }
-    }
-
-    // Insert new alert
-    const { data: inserted, error: insertErr } = await supabase
-      .from('alerts')
-      .insert({
-        user_id:          userId,
-        dedupe_key:       spec.dedupeKey,
-        category:         spec.category,
-        urgency:          spec.urgency,
-        title:            spec.title,
-        suggested_action: spec.suggestedAction,
-        status:           'active',
-        source:           'rule_engine',
-      })
-      .select('id')
-      .single()
-
-    if (insertErr || !inserted) return toResultError('INTERNAL_ERROR', 'Failed to create alert')
-
-    await supabase
-      .from('alert_evidence')
-      .insert({ alert_id: inserted.id, fact_id: spec.evidenceFactId })
-
-    const { data: full, error: fetchErr } = await supabase
-      .from('alerts')
-      .select('*, alert_evidence(fact_id, facts(id, title))')
-      .eq('id', inserted.id)
-      .eq('user_id', userId)
-      .single()
-
-    if (fetchErr || !full) return toResultError('INTERNAL_ERROR', 'Failed to fetch alert')
-    return { ok: true, data: rowToAlert(full as unknown as AlertRow) }
-  },
-
   async listAlerts(userId: string, filters: ListAlertsInput): Promise<PaginatedResult<Alert>> {
     const supabase = await createClient()
     const { status, page, pageSize } = filters

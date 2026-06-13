@@ -9,7 +9,7 @@ export type AlertSource   = 'rule_engine' | 'ai_scan'
 export interface Alert {
   id: string
   userId: string
-  // Upsert key — rule-engine: 'expiry:{factId}:7|30|90' / 'due:{factId}'
+  // Upsert key — rule-engine: 'expiry:{factId}' / 'due:{factId}' (window excluded)
   //              AI: 'ai:' + sha256(sorted_evidence + ':' + category)
   dedupeKey:      string | null
   category:       AlertCategory

@@ -3,7 +3,7 @@
 
 import {
   Tv, Music, ShoppingCart, Cloud, Sparkles, Youtube, Film, Palette,
-  Dumbbell, Box, ShieldCheck, Receipt, FileText, Home,
+  Dumbbell, Box,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { FactType } from '@/domain/fact'
@@ -29,32 +29,6 @@ export const QUICK_ADD_PRESETS: SubscriptionPreset[] = [
   { name: 'Gym',          amount: 39.99, day: 28, icon: Dumbbell,     color: '#F59E0B' },
   { name: 'Dropbox',      amount: 11.99, day: 18, icon: Box,          color: '#2563EB' },
 ]
-
-export interface GmailSuggestion extends SubscriptionPreset {
-  sender: string
-  subject: string
-  type: FactType
-}
-
-export const GMAIL_SUGGESTIONS: GmailSuggestion[] = [
-  { name: 'Netflix',        amount: 15.99, day: 12, icon: Tv,           color: '#E50914', type: 'subscription', sender: 'info@account.netflix.com', subject: 'Your Netflix payment receipt' },
-  { name: 'Spotify',        amount: 9.99,  day: 5,  icon: Music,        color: '#1DB954', type: 'subscription', sender: 'no-reply@spotify.com',     subject: 'Your Premium plan renews soon' },
-  { name: 'Amazon Prime',   amount: 14.99, day: 20, icon: ShoppingCart, color: '#FF9900', type: 'subscription', sender: 'auto-confirm@amazon.com',  subject: 'Your Prime membership receipt' },
-  { name: 'Apple iCloud',   amount: 2.99,  day: 1,  icon: Cloud,        color: '#3B82F6', type: 'subscription', sender: 'no_reply@email.apple.com', subject: 'Your iCloud+ subscription' },
-  { name: 'BCAA Insurance', amount: 88.00, day: 24, icon: ShieldCheck,  color: '#059669', type: 'insurance',    sender: 'service@bcaa.com',         subject: 'Auto policy renewal notice' },
-  { name: 'Adobe CC',       amount: 54.99, day: 3,  icon: Palette,      color: '#FF3366', type: 'subscription', sender: 'mail@adobe.com',           subject: 'Your Creative Cloud invoice' },
-  { name: 'Gym',            amount: 39.99, day: 28, icon: Dumbbell,     color: '#F59E0B', type: 'subscription', sender: 'billing@fitlife.com',      subject: 'Monthly membership charged' },
-]
-
-// Map a document-extraction "type" label to a FactType + identity icon/color.
-export const DOC_TYPES = [
-  { label: 'Insurance card', type: 'insurance' as FactType, icon: ShieldCheck, color: '#059669' },
-  { label: 'Warranty',       type: 'warranty'  as FactType, icon: ShieldCheck, color: '#CA8A04' },
-  { label: 'Lease',          type: 'lease'     as FactType, icon: Home,        color: '#4F46E5' },
-  { label: 'Receipt',        type: 'receipt'   as FactType, icon: Receipt,     color: '#52525B' },
-] as const
-
-export const FALLBACK_DOC_ICON = FileText
 
 // Next future occurrence of a day-of-month, as a full ISO string (UTC offset).
 // Matches createFactSchema's `dueDate: z.string().datetime({ offset: true })`.
