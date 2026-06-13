@@ -47,7 +47,9 @@ const QUERY = [
 ].join(' ')
 
 const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1/users/me/messages'
-const MAX_MESSAGES = 40
+const MAX_MESSAGES = 25
+const BATCH_SIZE = 5          // fetch this many detail requests concurrently
+const BATCH_DELAY_MS = 300    // wait between batches to stay within Gmail quota
 
 interface ListResponse {
   messages?: { id: string }[]
@@ -111,14 +113,23 @@ export async function fetchGmailSuggestions(
   const detailUrl = (id: string) =>
     `${GMAIL_API}/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`
 
+  // Fetch in small batches to stay within Gmail's per-second quota (429 if all parallel).
   let done = 0
-  const messages = await Promise.all(
-    ids.map(async (id) => {
-      const msg = await gapi<MessageResponse>(detailUrl(id), token)
-      cb.onProgress?.(++done, ids.length)
-      return msg
-    }),
-  )
+  const messages: MessageResponse[] = []
+  for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+    const batch = ids.slice(i, i + BATCH_SIZE)
+    const results = await Promise.all(
+      batch.map(async (id) => {
+        const msg = await gapi<MessageResponse>(detailUrl(id), token)
+        cb.onProgress?.(++done, ids.length)
+        return msg
+      }),
+    )
+    messages.push(...results)
+    if (i + BATCH_SIZE < ids.length) {
+      await new Promise((r) => setTimeout(r, BATCH_DELAY_MS))
+    }
+  }
 
   // Build matches, then dedupe by brand (prefer an entry that has an amount).
   const byName = new Map<string, GmailMatch>()
