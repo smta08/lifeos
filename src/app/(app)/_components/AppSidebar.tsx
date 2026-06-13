@@ -4,6 +4,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
+  CalendarClock,
+  FileText,
+  Mail,
   Archive,
   Activity,
   Settings,
@@ -11,6 +14,9 @@ import {
 
 const NAV_ITEMS = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/timeline',  icon: CalendarClock,    label: 'Timeline'  },
+  { href: '/docs',      icon: FileText,         label: 'Docs'      },
+  { href: '/scan',      icon: Mail,             label: 'Gmail scan' },
   { href: '/facts',     icon: Archive,          label: 'Memory'    },
   { href: '/activity',  icon: Activity,         label: 'Activity'  },
   { href: '/settings',  icon: Settings,         label: 'Settings'  },

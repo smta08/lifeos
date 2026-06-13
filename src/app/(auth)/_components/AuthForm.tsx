@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Loader2, Mail } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { getAppOrigin } from '@/lib/app-url'
 
 interface AuthFormProps {
   mode: 'login' | 'signup'
@@ -42,26 +43,33 @@ export function AuthForm({ mode, initialError }: AuthFormProps) {
   const next = mode === 'signup' ? '/onboarding' : '/dashboard'
 
   function callbackUrl() {
-    const origin = typeof window !== 'undefined' ? window.location.origin : ''
-    return `${origin}/api/auth/callback?next=${next}`
+    const origin = getAppOrigin(
+      typeof window !== 'undefined' ? window.location.origin : undefined,
+    )
+    return `${origin}/api/auth/callback?next=${encodeURIComponent(next)}`
   }
 
   async function handleGoogle() {
     setLoading('google')
     setError(null)
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: callbackUrl(),
-        scopes: 'openid email profile',
       },
     })
     if (error) {
       setError('Something went wrong. Please try again.')
       setLoading(null)
+      return
     }
-    // On success the browser navigates away — no further state needed
+    if (data.url) {
+      window.location.assign(data.url)
+    } else {
+      setError('Something went wrong. Please try again.')
+      setLoading(null)
+    }
   }
 
   async function handleMagicLink(e: React.FormEvent) {

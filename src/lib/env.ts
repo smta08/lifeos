@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { normalizeSupabaseUrl } from '@/lib/supabase/config'
 
 // Treat an empty-string env var the same as unset. Without this, a key present
 // but blank in .env (e.g. INNGEST_SIGNING_KEY=) fails .min(1) and throws at
@@ -11,7 +12,10 @@ const optionalSecret = () =>
 
 const envSchema = z.object({
   // Supabase — required at runtime
-  NEXT_PUBLIC_SUPABASE_URL:  z.string().url(),
+  NEXT_PUBLIC_SUPABASE_URL: z
+    .string()
+    .url()
+    .transform(normalizeSupabaseUrl),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   // Service-role key: webhook handlers and migrations ONLY — never in user query paths
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),

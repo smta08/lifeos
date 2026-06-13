@@ -10,10 +10,11 @@ interface Props {
 }
 
 export default function LoginPage({ searchParams }: Props) {
-  const error =
-    searchParams.error === 'auth'
-      ? 'Something went wrong. Please try again.'
-      : undefined
+  const errorMap: Record<string, string> = {
+    auth: 'Sign-in failed. Check that Google OAuth is enabled in your Supabase project and try again.',
+    server_error: 'A server error occurred. Please try again in a moment.',
+  }
+  const error = searchParams.error ? (errorMap[searchParams.error] ?? 'Something went wrong. Please try again.') : undefined
 
   return <AuthForm mode="login" initialError={error} />
 }

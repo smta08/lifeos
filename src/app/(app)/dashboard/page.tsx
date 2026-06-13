@@ -3,7 +3,11 @@ import { Plus } from 'lucide-react'
 import { requireUser } from '@/services/auth/requireUser'
 import { createClient } from '@/lib/supabase/server'
 import { alertRepo } from '@/repositories/alertRepo'
+import { factRepo } from '@/repositories/factRepo'
 import { AlertList } from '@/features/alerts/components/AlertList'
+import { SpendingStrip } from '@/features/facts/components/SpendingStrip'
+import { QuickAddChips } from '@/features/facts/components/QuickAddChips'
+import { totalMonthlySpend, renewingSoon } from '@/domain/spending'
 import type { Alert, AlertJSON } from '@/domain/alert'
 
 function greeting(timezone: string) {
@@ -40,9 +44,10 @@ export default async function DashboardPage() {
   const user = await requireUser()
   const supabase = await createClient()
 
-  const [{ data: profile }, alertsResult] = await Promise.all([
+  const [{ data: profile }, alertsResult, factsResult] = await Promise.all([
     supabase.from('profiles').select('display_name, timezone').eq('id', user.id).single(),
     alertRepo.listAlerts(user.id, { status: ['active', 'snoozed'], page: 1, pageSize: 50 }),
+    factRepo.listFacts(user.id, { status: 'active', page: 1, pageSize: 100 }),
   ])
 
   const name     = profile?.display_name ?? user.email?.split('@')[0] ?? 'there'
@@ -50,6 +55,12 @@ export default async function DashboardPage() {
   const alerts = alertsResult.ok ? alertsResult.data.items : []
   const alertsJSON: AlertJSON[] = alerts.map(serializeAlert)
   const activeCount = alerts.filter((a) => a.status === 'active').length
+
+  // Spending overview derived from active facts (pure domain math).
+  const facts = factsResult.ok ? factsResult.data.items : []
+  const totalMonthly   = totalMonthlySpend(facts)
+  const soonCount      = renewingSoon(facts, 14)
+  const existingTitles = facts.map((f) => f.title.toLowerCase())
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -63,6 +74,24 @@ export default async function DashboardPage() {
             ? 'Everything looks good.'
             : `${activeCount} item${activeCount !== 1 ? 's' : ''} need${activeCount === 1 ? 's' : ''} your attention.`}
         </p>
+      </div>
+
+      {/* Spending overview */}
+      <div className="mb-8 space-y-5">
+        <SpendingStrip
+          totalMonthly={totalMonthly}
+          trackedCount={facts.length}
+          soonCount={soonCount}
+        />
+        <div>
+          <h2 className="mb-3 text-sm font-medium text-[#1D1D1F] dark:text-[#FAFAFA]">
+            Quick add
+            <span className="ml-2 font-normal text-[#52525B] dark:text-[#A1A1AA]">
+              one tap to start tracking
+            </span>
+          </h2>
+          <QuickAddChips existingTitles={existingTitles} />
+        </div>
       </div>
 
       {/* Alert list (handles its own empty state) */}

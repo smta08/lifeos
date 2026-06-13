@@ -1,8 +1,9 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { getSupabasePublicConfig } from '@/lib/supabase/config'
 
 // URL paths that require an authenticated session
-const APP_PREFIXES = ['/dashboard', '/facts', '/activity', '/settings', '/onboarding']
+const APP_PREFIXES = ['/dashboard', '/timeline', '/docs', '/scan', '/facts', '/activity', '/settings', '/onboarding']
 
 // URL paths that should redirect away when already authenticated
 const AUTH_PATHS = ['/login', '/signup']
@@ -16,14 +17,20 @@ function isAuthRoute(pathname: string) {
 }
 
 export async function middleware(request: NextRequest) {
+  // PKCE code exchange runs in /api/auth/callback — middleware must not touch auth cookies first.
+  if (request.nextUrl.pathname.startsWith('/api/auth/callback')) {
+    return NextResponse.next()
+  }
+
   // Start with a response that passes the request through unchanged.
   // The setAll callback below may replace this with a new response that
   // carries refreshed session cookies.
   let supabaseResponse = NextResponse.next({ request })
 
+  const { url, anonKey } = getSupabasePublicConfig()
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    anonKey,
     {
       cookies: {
         getAll() {
