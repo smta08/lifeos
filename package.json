@@ -2,6 +2,15 @@
   "name": "lifeos",
   "version": "0.1.0",
   "private": true,
+  "description": "Privacy-first personal life-admin app that tracks subscriptions, renewals, and document expiries and surfaces what needs your attention.",
+  "keywords": [
+    "nextjs",
+    "typescript",
+    "supabase",
+    "personal-finance",
+    "subscription-tracker",
+    "rls"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
