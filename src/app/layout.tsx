@@ -1,10 +1,20 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import './globals.css'
 
 export const metadata: Metadata = {
   title: { default: 'LifeOS', template: '%s — LifeOS' },
   description: 'AI life admin OS — quietly watching so you don\'t have to.',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  // Zoom is intentionally left enabled — never trap accessibility for aesthetics.
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#F5F5F7' },
+    { media: '(prefers-color-scheme: dark)', color: '#0B0C0E' },
+  ],
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
