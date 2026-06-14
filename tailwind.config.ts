@@ -11,7 +11,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Design system tokens — docs/CLAUDE.md §Design System
+        // Design system tokens — see docs/CONTRIBUTING.md § Design system
         'page-bg': '#F5F5F7',
         'card-bg': '#FFFFFF',
         accent: '#0369A1',
