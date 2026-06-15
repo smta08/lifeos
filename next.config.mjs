@@ -1,13 +1,17 @@
 /** @type {import('next').NextConfig} */
 
+const isDev = process.env.NODE_ENV !== 'production'
+
 // Content-Security-Policy. Scoped to the origins this app actually talks to:
 // Fontshare (web fonts), Supabase (data + auth), the Gmail API (browser-side read-only
 // scan), and blob/wasm for the in-browser pdf.js + Tesseract OCR workers. 'unsafe-inline'
 // covers Next's hydration bootstrap and injected styles; 'wasm-unsafe-eval' is required by
-// Tesseract's WebAssembly core. Tighten to a nonce-based policy if those constraints change.
+// Tesseract's WebAssembly core. 'unsafe-eval' is added in dev only — Next's React Refresh
+// (hot reload) evaluates strings; production bundles never do. Tighten to a nonce-based
+// policy if those constraints change.
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:",
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:${isDev ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline' https://api.fontshare.com",
   "font-src 'self' https://cdn.fontshare.com https://api.fontshare.com data:",
   "img-src 'self' data: blob: https:",
