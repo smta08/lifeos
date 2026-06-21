@@ -79,16 +79,25 @@ export function AuthForm({ mode, initialError }: AuthFormProps) {
     setError(null)
 
     const supabase = createClient()
-    await supabase.auth.signInWithOtp({
+    const { error: otpError } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
         emailRedirectTo: callbackUrl(),
-        // Login page: don't create new accounts. Signup page: allow new accounts.
         shouldCreateUser: mode === 'signup',
       },
     })
 
-    // Always show "check your inbox" — never reveal whether the email exists
+    if (otpError) {
+      // Common causes: redirect URL not in Supabase allowlist, rate limit, or invalid email
+      setError(
+        otpError.message.includes('redirect')
+          ? 'Sign-in link failed: redirect URL not allowed. Please contact support.'
+          : otpError.message || 'Something went wrong. Please try again.',
+      )
+      setLoading(null)
+      return
+    }
+
     setLoading(null)
     setSent(true)
   }
